@@ -1,7 +1,6 @@
 # Bomber-Belts
 
-This project originated from Professor Daniel Jugan's ITCS 3153 course, "Introduction to Artificial Intelligence." The challenge involves scripting an AI to control an agent (robot) tasked with pressing buttons. In this interactive application, the agent competes against another robot, both pressing buttons strategically. Each button press sets off a chain reaction, moving bombs along a conveyor belt towards the opponent's side. Upon reaching the opponent's side, a bomb explodes, deducting one life from the opponent. Players start with 8 lives, and the first to reach 0 loses the game.
-
+This project originated from Professor Daniel Jugan's ITCS 3153 course, "Introduction to Artificial Intelligence" at the University of North Carolina at Charlotte. The challenge involves scripting an AI to control an agent (robot) tasked with pressing buttons. In this interactive application, the agent competes against another robot, both pressing buttons strategically. Each button press sets off a chain reaction, moving bombs along a conveyor belt towards the opponent's side. Upon reaching the opponent's side, a bomb explodes, deducting one life from the opponent. Players start with 8 lives, and the first to reach 0 loses the game.
 
 <div align="center">
     <img src="/Media/image_1.JPG" alt="Screenshot of Live Server Extension" width="600">
