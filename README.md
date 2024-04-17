@@ -1,6 +1,8 @@
 # Bomber-Belts
 
-This project originated from Professor Daniel Jugan's ITCS 3153 course, "Introduction to Artificial Intelligence" at the University of North Carolina at Charlotte. The challenge involves scripting an AI to control an agent (robot) tasked with pressing buttons. In this interactive application, the agent competes against another robot, both pressing buttons strategically. Each button press sets off a chain reaction, moving bombs along a conveyor belt towards the opponent's side. Upon reaching the opponent's side, a bomb explodes, deducting one life from the opponent. Players start with 8 lives, and the first to reach 0 loses the game.
+This project originated from Professor Daniel Jugan's ITCS 3153 course, "Introduction to Artificial Intelligence" at the University of North Carolina at Charlotte. Everything except for the AI Script that runs the robot was created by the Instructor. Students are to create the script to move the AT.
+
+The challenge involves scripting an AI to control an agent (robot) tasked with pressing buttons. In this interactive application, the agent competes against another robot, both pressing buttons strategically. Each button press sets off a chain reaction, moving bombs along a conveyor belt towards the opponent's side. Upon reaching the opponent's side, a bomb explodes, deducting one life from the opponent. Players start with 8 lives, and the first to reach 0 loses the game.
 
 <div align="center">
     <img src="/Media/image_1.JPG" alt="Screenshot of Live Server Extension" width="600">
@@ -13,6 +15,16 @@ This project originated from Professor Daniel Jugan's ITCS 3153 course, "Introdu
 <div align="center">
     <img src="/Media/image_3.JPG" alt="Screenshot of Live Server Extension" width="600">
 </div>
+
+## Game Demo:
+
+In this video, two robots are engaged in a fast-paced battle where they must strategically press buttons to control the movement of bombs on a conveyor belt. The objective is clear: prevent the bombs from reaching the opponent's side, as they will detonate upon arrival.
+
+As the robots frantically press their respective buttons, the bombs swiftly move along the conveyor belt, inching closer to their target with each button press. The tension builds as players must balance offense and defense, timing their actions precisely to outmaneuver their opponent and avoid catastrophe.
+
+"Bomber Belt" promises an exhilarating multiplayer experience filled with action, strategy, and adrenaline-pumping moments. Whether playing against friends or challenging AI opponents, this game is sure to provide hours of entertainment and competitive fun.
+
+[![Bomber Belt](https://img.youtube.com/vi/luqdXuSWS50/0.jpg)](https://www.youtube.com/watch?v=luqdXuSWS50)
 
 ## Purpose:
 
