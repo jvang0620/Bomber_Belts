@@ -1,159 +1,299 @@
 using UnityEngine;
-using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
+using System;
 
 public class AIScript_JaiVang : MonoBehaviour
 {
     // Reference to the main character script
     public CharacterScript mainScript;
 
-    // Radius within which the AI considers a button pressable
-    private float buttonRadius = 1f;
+    // Arrays to store bomb speeds, button cooldowns, button locations, belt directions, and bomb distances
+    public float[] bombSpeeds;
+    public float[] buttonCooldowns;
+    public float playerSpeed;
+    public float[] buttonLocations;
+    public float currentLocation;
+    public float enemyLocation;
+    public int[] beltDirections = new int[8]; 
+    public float[] bombDistances = new float[8];
+    public const float BUFFER = 0.37f;
 
-    // Index of the target button the AI is currently focusing on
-    private int targetButtonIndex = -1;
+    // Sorted list to store belt indices and corresponding scores
+    public SortedList<int, float> beltList = new SortedList<int, float>();
 
-    // Arrays to store cooldowns, directions, locations, and speeds
-    private float[] buttonCooldowns;
-    private int[] beltDirections;
-    private float[] buttonLocations;
-    private float playerSpeed;
-    private float[] bombSpeeds;
+    // Flag to control list update
+    public bool updateList = true;
 
-    // Start is called before the first frame update
+    // Flags to indicate AI behavior modes
+    public bool isSafeRobot = true;
+    public bool isAggressiveRobot = false;
+    
+
+    // Start method is called before the first frame update
     void Start()
     {
-        // Get the CharacterScript component attached to this GameObject
+        // Get the main character script component
         mainScript = GetComponent<CharacterScript>();
 
-        // Check if CharacterScript is assigned
-        ValidateMainScript();
-    }
-
-    // Validate if CharacterScript is assigned
-    void ValidateMainScript()
-    {
+        // Disable the script if CharacterScript component is not found
         if (mainScript == null)
         {
-            Debug.LogError("No CharacterScript found on " + gameObject.name);
-            // Disable this script if CharacterScript is not assigned
-            enabled = false;
+            print("No CharacterScript found on " + gameObject.name);
+            this.enabled = false;
         }
-    }
 
-    // Update is called once per frame
-    void Update()
-    {
-        // Update the game state by getting current values
-        UpdateGameState();
-        // Evaluate button priorities based on current game state
-        EvaluateButtonPriorities();
-        // Move towards the target button
-        MoveTowardsButton();
-    }
-
-    // Update game state variables
-    void UpdateGameState()
-    {
-        buttonCooldowns = mainScript.getButtonCooldowns();
-        beltDirections = mainScript.getBeltDirections();
+        // Initialize button locations and player speed
         buttonLocations = mainScript.getButtonLocations();
         playerSpeed = mainScript.getPlayerSpeed();
-        bombSpeeds = mainScript.getBombSpeeds();
     }
 
-    // Evaluate priorities for pressing buttons
-    void EvaluateButtonPriorities()
+    // Method to count enemy belts
+    public int countEnemyBelts()
     {
-        // Initialize minimum distance to infinity
-        float minDistance = Mathf.Infinity;
-
-        // Iterate through button locations
-        for (int i = 0; i < buttonLocations.Length; i++)
+        int result = 0;
+        for (int i = 0; i < beltDirections.Length; i++)
         {
-            // Check if the button is pressable
-            if (IsButtonPressable(i))
+            if (beltDirections[i] == -1)
             {
-                // Calculate distance to the button
-                float distanceToButton = Mathf.Abs(buttonLocations[i] - mainScript.getCharacterLocation());
-
-                // Update the target button if it's closer than the current minimum distance
-                if (distanceToButton < minDistance)
-                {
-                    minDistance = distanceToButton;
-                    targetButtonIndex = i;
-                }
+                result++;
             }
         }
+        return result;
     }
 
-    // Check if a button is pressable
-    bool IsButtonPressable(int buttonIndex)
+    // Method to count ally belts
+    public int countFriendlyBelts()
     {
-        // Button is pressable if its cooldown is zero and belt direction is not towards the button
-        return buttonCooldowns[buttonIndex] <= 0 && beltDirections[buttonIndex] == -1;
-    }
-
-    // Move towards the target button
-    void MoveTowardsButton()
-    {
-        // Check if there's a target button
-        if (targetButtonIndex != -1)
+        int result = 0;
+        for (int i = 0; i < beltDirections.Length; i++)
         {
-            // Get the position of the target button and current player position
-            float buttonPosition = buttonLocations[targetButtonIndex];
-            float playerLocation = mainScript.getCharacterLocation();
+            if (beltDirections[i] == 1)
+            {
+                result++;
+            }
+        }
+        return result;
+    }
 
-            // Press the button if player is within the button radius
-            if (Mathf.Abs(buttonPosition - playerLocation) < buttonRadius)
-                mainScript.push();
-            // Move down if button is below the player
-            else if (buttonPosition < playerLocation)
-                mainScript.moveDown();
-            // Move up if button is above the player
+    // Method to calculate time to explosion for a given bomb
+    public float getExplosionTime(int bombNumber)
+    {
+        if (bombNumber < 0 || bombNumber > 7)
+        {
+            return Mathf.Infinity;
+        }
+        else if (bombSpeeds[bombNumber] != 0)
+        {
+            return bombDistances[bombNumber] / bombSpeeds[bombNumber];
+        }
+        else
+        {
+            if (beltList.Count != 0)
+            {
+                return (float)beltList.Keys[beltList.Count - 1];
+            }
             else
-                mainScript.moveUp();
-        }
-    }
-
-    // Get the index of the closest button to a given position
-    int GetClosestButtonIndex(float position)
-    {
-        int closestIndex = -1;
-        float minDistance = float.MaxValue;
-
-        // Iterate through button locations
-        for (int i = 0; i < buttonLocations.Length; i++)
-        {
-            // Calculate distance to the button
-            float distance = Mathf.Abs(buttonLocations[i] - position);
-            // Update closest index if this button is closer
-            if (distance < minDistance)
             {
-                closestIndex = i;
-                minDistance = distance;
+                return 10;
             }
         }
-
-        return closestIndex;
     }
 
-    // Calculate time until a bomb reaches a button
-    float TimeUntilBombReachesButton(int buttonIndex)
+    // Method to determine if a bomb is isSavable
+    public bool isSavable(int bomb)
     {
-        if (buttonIndex < 0 || buttonIndex >= buttonLocations.Length)
-            return Mathf.Infinity;
+        float timeToSave = Mathf.Abs(currentLocation - buttonLocations[bomb]) / playerSpeed + BUFFER;
+        float explosionTime = getExplosionTime(bomb);
 
-        // Calculate time based on distance and bomb speed
-        return mainScript.getBombDistances()[buttonIndex] / bombSpeeds[buttonIndex];
+        return timeToSave < explosionTime && buttonCooldowns[bomb] < 0.0f;
     }
 
-    // Calculate time until player reaches a button
-    float TimeUntilPlayerReachesButton(int buttonIndex)
+    // Method to determine if a bomb is considerable for action
+    public bool isConsiderableBomb(int bomb)
     {
-        if (buttonIndex < 0 || buttonIndex >= buttonLocations.Length)
-            return Mathf.Infinity;
-
-        // Calculate time based on distance and player speed
-        return Mathf.Abs(mainScript.getCharacterLocation() - buttonLocations[buttonIndex]) / playerSpeed;
+        return isSavable(bomb) && beltDirections[bomb] != 1;
     }
+
+    // Method to get current belt index
+    public int getCurrentBeltIndex()
+    {
+        float distance = Mathf.Infinity;
+        int currentIndex = 0;
+        for (int i = 0; i < beltDirections.Length; i++)
+        {
+            if (Mathf.Abs(currentLocation - buttonLocations[i]) < distance)
+            {
+                currentIndex = i;
+                distance = Mathf.Abs(currentLocation - buttonLocations[i]);
+            }
+        }
+        return currentIndex;
+    }
+
+    // Method to get current enemy belt index
+    public int getEnemyCurBelt()
+    {
+        float distance = Mathf.Infinity;
+        int currentIndex = 0;
+        for (int i = 0; i < beltDirections.Length; i++)
+        {
+            if (Mathf.Abs(enemyLocation - buttonLocations[i]) < distance)
+            {
+                currentIndex = i;
+                distance = Mathf.Abs(enemyLocation - buttonLocations[i]);
+            }
+        }
+        return currentIndex;
+    }
+
+    // Method to get index of belt with lowest score
+    public int getLowScore(SortedList<int, float> l)
+    {
+        int resultIndex = 0;
+        float tempory_variable = Mathf.Infinity;
+        for (int i = 0; i < l.Count; i++)
+        {
+            if (l.Values[i] < tempory_variable)
+            {
+                tempory_variable = l.Values[i];
+                resultIndex = i;
+            }
+        }
+        return resultIndex;
+    }
+
+    // Update method is called once per frame
+    void Update()
+    {
+        // Update button cooldowns, belt directions, bomb distances, and character/enemy locations
+        buttonCooldowns = mainScript.getButtonCooldowns();
+        beltDirections = mainScript.getBeltDirections();
+        bombDistances = mainScript.getBombDistances();
+        currentLocation = mainScript.getCharacterLocation();
+        enemyLocation = mainScript.getOpponentLocation();
+        bombSpeeds = mainScript.getBombSpeeds();
+
+        // Loop through each belt
+        for (int i = 0; i < beltDirections.Length; i++)
+        {
+            // Calculate various parameters for decision-making
+            bool isPushed = beltDirections[i] == 1;
+            float distanceFromBot = Mathf.Abs(currentLocation - buttonLocations[i]);
+            float timeUntilExplosion = getExplosionTime(i);
+            float score = 0;
+            int enemyBelts = countEnemyBelts();
+            int friendlyBelts = countFriendlyBelts();
+
+            // Switch between safe and aggressive modes based on ally belt count
+            if (friendlyBelts > 3) 
+            {
+                SetAggressiveMode();
+            }
+            else
+            {
+                SetSafeMode();
+            }
+
+            // Calculate score based on mode and various factors
+            if (isSafeRobot)
+            {
+                // Score calculation for safe mode
+                score = CalculateSafeScore(distanceFromBot, timeUntilExplosion, i);
+            }
+            else
+            {
+                // Score calculation for aggressive mode
+                score = CalculateAggressiveScore(distanceFromBot, timeUntilExplosion, i);
+            }
+
+            // Adjust score for bombs that are not considerable
+            if (!isConsiderableBomb(i))
+            {
+                score += 1000;
+            }
+
+            // Update or add score to belt list
+            if (beltList.Count < 8)
+            {
+                beltList.Add(i, score);
+            }
+            else
+            {
+                beltList[i] = score;
+            }
+
+
+        }
+
+        // Switch logging for bot mode
+        updateList = false;
+
+        // Make decision based on lowest scored belt
+        if (beltList.Count != 0)
+        {
+            int index, location = 0;
+            float score = 0.0f;
+
+            // Get lowest score and corresponding belt index
+            index = getLowScore(beltList);
+            location = (int)beltList.Keys[index];
+            score = (float)beltList.Values[index];
+
+            // Move character based on decision
+            if (buttonLocations[location] < mainScript.getCharacterLocation())
+            {
+                mainScript.moveDown();
+            }
+            else if (buttonLocations[location] > mainScript.getCharacterLocation())
+            {
+                mainScript.moveUp();
+            }
+
+            // Push button if isSavable and on current belt
+            if (isSavable(location) && location == getCurrentBeltIndex())
+            {
+                mainScript.push();
+                updateList = true;
+            }
+        }
+    }
+
+    // Calculate score for safe mode
+    float CalculateSafeScore(float distance, float timeToExplosion, int index)
+    {
+        float baseScore = distance + timeToExplosion - bombSpeeds[index] * 10;
+        if (beltDirections[index] == -1)
+        {
+            baseScore -= 10;
+        }
+        return baseScore;
+    }
+
+    // Calculate score for aggressive mode
+    float CalculateAggressiveScore(float distance, float timeToExplosion, int index)
+    {
+        float baseScore = 1 / distance + timeToExplosion - bombSpeeds[index] * 4 - Math.Abs(getEnemyCurBelt() - getCurrentBeltIndex()) * 2;
+        if (beltDirections[index] == -1)
+        {
+            baseScore -= 6;
+        }
+        return baseScore;
+    }
+
+
+    // Set the robot mode to aggressive
+    void SetAggressiveMode()
+    {
+        isSafeRobot = false;
+        isAggressiveRobot = true;
+    }
+
+    // Set the robot mode to safe
+    void SetSafeMode()
+    {
+        isAggressiveRobot = false;
+        isSafeRobot = true;
+    }
+
 }
